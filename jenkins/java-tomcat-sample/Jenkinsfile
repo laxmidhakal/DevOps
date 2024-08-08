@@ -29,6 +29,8 @@ pipeline {
             steps {
                 echo "Running app on QA env"
                 sh '''
+                docker stop tomcatInstanceQA || true
+                docker rm tomcatInstanceQA || true
                 docker run -itd --name tomcatInstanceQA -p 8082:8080 localtomcatimg:$BUILD_NUMBER
                 sh '''
             }
