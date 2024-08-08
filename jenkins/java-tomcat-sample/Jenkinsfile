@@ -12,7 +12,6 @@ pipeline {
                 }
             }
         }
-    }
        stage('Create Tomcat Image') {
             steps {
                 copyArtifacts filter: '**/*.war', fingerprintArtifacts: true, projectName: env.JOB_NAME, selector: specific(env.BUILD_NUMBER)
@@ -25,4 +24,5 @@ pipeline {
                 sh '''
             }
         }
+}
 }
