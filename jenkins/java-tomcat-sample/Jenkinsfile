@@ -25,5 +25,13 @@ pipeline {
                 sh '''
             }
         }
+        stage('Deploy to QA Env') {
+            steps {
+                echo "Running app on QA env"
+                sh '''
+                docker run -itd --name tomcatInstanceQA -p 8082:8080 localtomcatimg:$BUILD_NUMBER
+                sh '''
+            }
+        }
 }
 }
