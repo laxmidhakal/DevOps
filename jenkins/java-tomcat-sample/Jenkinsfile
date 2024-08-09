@@ -44,6 +44,9 @@ pipeline {
             }
         }
         stage('Deploy Staging Environment') {
+                            agent {
+                label 'ubuntu-slave'
+            }
             steps {
                 timeout(time:2, unit:'MINUTES'){
                 input message:'Approve STAGING Deployment?'
