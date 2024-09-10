@@ -16,5 +16,10 @@ pipeline {
                 }
             }
         }
+        stage('UNIT TEST') {
+            steps {
+                sh 'mvn -f jenkins/java-tomcat-sample/pom.xml test'
+            }
+        }
 }
 }
