@@ -9,49 +9,62 @@ pipeline {
             }
             post {
                 success {
-                    echo "Now Archiving the Artifacts...."
+                    echo "Archiving the artifacts..."
                     archiveArtifacts artifacts: '**/*.war', followSymlinks: false, onlyIfSuccessful: true
                 }
             }
         }
-        stage('Create Tomcat Image') {
-            agent {
-                label 'ubuntu-node'
-            }
+        stage('Create Docker Image') {
             steps {
-                copyArtifacts filter: '**/*.war', fingerprintArtifacts: true, projectName: env.JOB_NAME, selector: specific(env.BUILD_NUMBER)
-                echo "Building docker image"
+                echo "Building Docker image..."
                 sh '''
-                original_pwd=$(pwd -P)
+                cp jenkins/java-tomcat-sample/target/*.war jenkins/java-tomcat-sample/app.war
                 cd jenkins/java-tomcat-sample
                 docker build -t localtomcatimg:$BUILD_NUMBER .
-                cd $original_pwd
-                sh '''
+                '''
             }
         }
-        stage('Deploy to Stagging Env') {
+        stage('Deploy to Staging Environment') {
             steps {
-                echo "Running app on stagging env"
+                echo "Deploying to staging environment using Docker Compose..."
+                writeFile file: 'docker-compose.staging.yml', text: """
+                version: '3.8'
+                services:
+                  tomcat-staging:
+                    image: localtomcatimg:${BUILD_NUMBER}
+                    container_name: tomcatInstanceStaging
+                    ports:
+                      - "8082:8080"
+                    restart: always
+                """
                 sh '''
-                docker stop tomcatInstanceStaging || true
-                docker rm tomcatInstanceStaging || true
-                docker run -itd --name tomcatInstanceStaging -p 8082:8080 localtomcatimg:$BUILD_NUMBER
-                sh '''
+                docker-compose -f docker-compose.staging.yml down || true
+                docker-compose -f docker-compose.staging.yml up -d
+                '''
             }
         }
-        stage('Deploy Production Environment') {
+        stage('Deploy to Production Environment') {
             agent {
                 label 'ubuntu-slave'
             }
             steps {
-                timeout(time:1, unit:'DAYS'){
-                input message:'Approve PRODUCTION Deployment?'
+                timeout(time: 1, unit: 'DAYS') {
+                    input message: 'Approve PRODUCTION Deployment?'
                 }
-                echo "Running app on Prod env"
+                echo "Deploying to production environment using Docker Compose..."
+                writeFile file: 'docker-compose.prod.yml', text: """
+                version: '3.8'
+                services:
+                  tomcat-prod:
+                    image: localtomcatimg:${BUILD_NUMBER}
+                    container_name: tomcatInstanceProd
+                    ports:
+                      - "8083:8080"
+                    restart: always
+                """
                 sh '''
-                docker stop tomcatInstanceProd || true
-                docker rm tomcatInstanceProd || true
-                docker run -itd --name tomcatInstanceProd -p 8083:8080 localtomcatimg:$BUILD_NUMBER
+                docker-compose -f docker-compose.prod.yml down || true
+                docker-compose -f docker-compose.prod.yml up -d
                 '''
             }
         }
